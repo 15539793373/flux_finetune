@@ -2,13 +2,13 @@ import argparse
 import yaml
 import torch
 from accelerate import Accelerator
-from pathlib import Path
 from diffusers.optimization import get_scheduler
 # 导入项目模块
 from core.data.dataset import DreamBoothDataset, BucketBatchSampler, collate_fn
 from registry.model_registry import ModelRegistry
 from registry.trainer_registry import TrainerRegistry
 from registry.pipeline_registry import PipelineRegistry
+from core.adapters.lora  import setup_lora
 from core.models.flux.flux2_klein import Flux2KleinModel 
 from core.trainer.trainer import FluxTrainer
 from core.pipeline.flux2kleinpipeline import Flux2kleinpipeline
@@ -69,7 +69,7 @@ def main():
         
     ).pipe
     # 注入 LoRA
-    from core.adapters.lora  import setup_lora
+    
     setup_lora(transformer, **config.get('lora', {}))
     for name, param in transformer.named_parameters():
         if "lora" in name:
