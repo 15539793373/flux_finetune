@@ -2,13 +2,12 @@ import os
 import torch
 from accelerate import Accelerator
 from tqdm.auto import tqdm
-from pathlib import Path
 from diffusers.training_utils import compute_density_for_timestep_sampling, compute_loss_weighting_for_sd3
-from diffusers.pipelines.flux2.pipeline_flux2_klein import Flux2KleinPipeline
+from diffusers import Flux2KleinPipeline
 from registry.trainer_registry import TrainerRegistry
 from core.adapters.lora import get_lora_state_dict
 from diffusers.training_utils import _collate_lora_metadata
-from registry.pipeline_registry import PipelineRegistry
+from utils.validation import flux2kelin_validation
 
 @TrainerRegistry.register('flux2kelinimage2image_lora')
 class Flux2KelinImage2ImageTrainer:
@@ -18,13 +17,11 @@ class Flux2KelinImage2ImageTrainer:
         self.global_step = 0
         
     def train(self, train_dataloader, transformer, optimizer, lr_scheduler, noise_scheduler, 
-              vae, validation_fn=None):
+              vae):
         transformer.train()
         progress_bar = tqdm(range(self.config.training.max_train_steps), disable=not self.accelerator.is_local_main_process)
-        
         # 获取 VAE 统计量
         latents_bn_mean, latents_bn_std = self._get_latent_stats(vae)
-        
         for epoch in range(self.config.training.num_train_epochs):
             for step, batch in enumerate(train_dataloader):
                 with self.accelerator.accumulate([transformer]):
@@ -32,31 +29,28 @@ class Flux2KelinImage2ImageTrainer:
                         batch, transformer, vae,
                         noise_scheduler, latents_bn_mean, latents_bn_std
                     )
-                    
                     self.accelerator.backward(loss)
+                    # 梯度累积
                     if self.accelerator.sync_gradients:
+                        # 梯度裁剪
                         self.accelerator.clip_grad_norm_(transformer.parameters(), self.config.training.max_grad_norm)
+                        # 权重更新
+                        optimizer.step()
+                        lr_scheduler.step()
+                        optimizer.zero_grad()
+                        # global_step 和进度条
+                        self.global_step += 1
+                        progress_bar.update(1)
+                        # checkpoint
+                        if self.global_step % self.config.training.checkpointing_steps == 0:
+                            self._save_checkpoint(transformer)
+                        # validation
+                        if self.global_step % self.config.validation.validation_steps == 0:
+                            flux2kelin_validation(self.config,transformer, self.accelerator,self.global_step)
                     
-                    optimizer.step()
-                    lr_scheduler.step()
-                    optimizer.zero_grad()
-                
-                if self.accelerator.sync_gradients:
-                    progress_bar.update(1)
-                    self.global_step += 1
-                    
-                    if self.global_step % self.config.training.checkpointing_steps == 0:
-                        self._save_checkpoint(transformer, epoch)
-                    
-                    if validation_fn and epoch % self.config.validation.validation_epochs == 0:
-                        validation_fn(self.global_step)
-                
-                if self.global_step >= self.config.training.max_train_steps:
-                    break
-            
-            if self.global_step >= self.config.training.max_train_steps:
-                break
-        
+                        if self.global_step >= self.config.training.max_train_steps:
+                            break
+
         progress_bar.close()
         self._save_final_checkpoint(transformer)
 
@@ -157,19 +151,24 @@ class Flux2KelinImage2ImageTrainer:
             latents_bn_std = torch.ones(1, 1, 1, 1).to(self.accelerator.device)
         return latents_bn_mean, latents_bn_std
 
-    def _save_checkpoint(self, transformer, epoch):
+    def _save_checkpoint(self, transformer):
         if self.accelerator.is_main_process:
             self._save_lora(transformer, f"checkpoint-{self.global_step}")
 
     def _save_final_checkpoint(self, transformer):
         if self.accelerator.is_main_process:
             self._save_lora(transformer, "final")
-            
+    
     def _save_lora(self, transformer, name):
         save_path = os.path.join(self.config.training.output_dir, name)
         os.makedirs(save_path, exist_ok=True)
-        PipelineCls = PipelineRegistry.get(self.config['model']['pipeline_name'])
-        PipelineCls().save_lora_weights(save_path, transformer)
+        transformer_lora_layers = get_lora_state_dict(transformer)
+        modules_to_save = {"transformer": transformer}
+        Flux2KleinPipeline.save_lora_weights(
+            save_directory=save_path,
+            transformer_lora_layers=transformer_lora_layers,
+            **(_collate_lora_metadata(modules_to_save) if modules_to_save else {})
+        )
         print(f"Saved checkpoint to {save_path}")
 
         

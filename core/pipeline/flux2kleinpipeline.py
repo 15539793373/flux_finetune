@@ -2,7 +2,7 @@ import torch
 from diffusers import Flux2KleinPipeline
 from registry.pipeline_registry import PipelineRegistry
 from diffusers.training_utils import _collate_lora_metadata
-from peft.utils import get_peft_model_state_dict
+
 
 @PipelineRegistry.register('flux2kleinpipeline')
 class Flux2kleinpipeline:
@@ -38,12 +38,4 @@ class Flux2kleinpipeline:
                 revision=self.revision,
             )
         return self._pipe
-    @staticmethod
-    def save_lora_weights(save_path, transformer):
-        transformer_lora_layers = get_peft_model_state_dict(transformer)
-        modules_to_save = {"transformer": transformer}
-        Flux2KleinPipeline.save_lora_weights(
-            save_directory=save_path,
-            transformer_lora_layers=transformer_lora_layers,
-            **(_collate_lora_metadata(modules_to_save) if modules_to_save else {})
-        )
+

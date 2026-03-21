@@ -22,7 +22,7 @@ training:
   off_load: True
   num_train_epochs: 200
   max_train_steps: 5000
-  checkpointing_steps: 500
+  checkpointing_steps: 2
   checkpoints_total_limit: 20
   gradient_accumulation_steps: 2
   gradient_checkpointing: true
@@ -45,10 +45,11 @@ training:
 
 validation:
   validation_prompt: "修复扭曲的建筑立面纹理，使纹理自然、清晰、结构不变"
-  validation_image: "test/Image1.png"
+  validation_image: "/code/control-lora-v2-master/test/tile/image/Image1.png"
   num_validation_images: 4
-  validation_epochs: 1
+  validation_steps: 2
   skip_final_inference: false
+  seed: 5534331
 
 lora:
   rank: 16

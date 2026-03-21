@@ -1,5 +1,5 @@
 from peft import LoraConfig
-
+from peft.utils import get_peft_model_state_dict
 def setup_lora(model, rank=16, alpha=32, dropout=0.0, target_modules=None):
     if target_modules is None:
         target_modules = ["to_k", "to_q", "to_v", "to_out.0"]
@@ -15,5 +15,5 @@ def setup_lora(model, rank=16, alpha=32, dropout=0.0, target_modules=None):
     return model
 
 def get_lora_state_dict(model):
-    from peft.utils import get_peft_model_state_dict
+    
     return get_peft_model_state_dict(model)

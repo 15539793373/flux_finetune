@@ -124,8 +124,7 @@ def main():
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
         noise_scheduler=scheduler,
-        vae=vae,
-        validation_fn=None
+        vae=vae
     )
 
 if __name__ == "__main__":
