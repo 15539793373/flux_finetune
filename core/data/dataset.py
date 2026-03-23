@@ -29,7 +29,7 @@ class DreamBoothDataset(Dataset):
         self.multiple_of = multiple_of
         self.text_emb = text_emb
 
-        self.data_list = load_dataset(self.config["data"]["data_json"])[:10]
+        self.data_list = load_dataset(self.config["data"]["data_json"])
         self.num_images = len(self.data_list)
         self._length = self.num_images
 

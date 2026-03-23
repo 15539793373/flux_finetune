@@ -21,7 +21,7 @@ def flux2kelin_validation(config, transformer, accelerator,global_step):
     generator = (
         torch.Generator(device=accelerator.device).manual_seed(config.validation.seed)
     )
-    validation_image = Image.open(config.validation.validation_image).convert("RGB")
+    validation_image = Image.open(config.validation.validation_image).convert("RGB") if config.validation.validation_image else None
     with torch.autocast(accelerator.device.type):
         image = pipeline(
             image=validation_image,

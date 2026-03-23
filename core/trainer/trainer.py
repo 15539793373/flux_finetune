@@ -171,4 +171,154 @@ class Flux2KelinImage2ImageTrainer:
         )
         print(f"Saved checkpoint to {save_path}")
 
+
+@TrainerRegistry.register('flux2kelintext2image_lora')
+class Flux2KelinText2ImageTrainer:
+    def __init__(self, accelerator: Accelerator, config):
+        self.accelerator = accelerator
+        self.config = config
+        self.global_step = 0
         
+    def train(self, train_dataloader, transformer, optimizer, lr_scheduler, noise_scheduler, 
+              vae):
+        transformer.train()
+        progress_bar = tqdm(range(self.config.training.max_train_steps), disable=not self.accelerator.is_local_main_process)
+        # 获取 VAE 统计量
+        latents_bn_mean, latents_bn_std = self._get_latent_stats(vae)
+        for epoch in range(self.config.training.num_train_epochs):
+            for step, batch in enumerate(train_dataloader):
+                with self.accelerator.accumulate([transformer]):
+                    loss = self._train_step(
+                        batch, transformer, vae,
+                        noise_scheduler, latents_bn_mean, latents_bn_std
+                    )
+                    self.accelerator.backward(loss)
+                    # 梯度累积
+                    if self.accelerator.sync_gradients:
+                        # 梯度裁剪
+                        self.accelerator.clip_grad_norm_(transformer.parameters(), self.config.training.max_grad_norm)
+                        # 权重更新
+                        optimizer.step()
+                        lr_scheduler.step()
+                        optimizer.zero_grad()
+                        # global_step 和进度条
+                        self.global_step += 1
+                        progress_bar.update(1)
+                        # checkpoint
+                        if self.global_step % self.config.training.checkpointing_steps == 0:
+                            self._save_checkpoint(transformer)
+                        # validation
+                        if self.global_step % self.config.validation.validation_steps == 0:
+                            flux2kelin_validation(self.config,transformer, self.accelerator,self.global_step)
+                    
+                        if self.global_step >= self.config.training.max_train_steps:
+                            break
+
+        progress_bar.close()
+        self._save_final_checkpoint(transformer)
+
+    def _train_step(self, batch, transformer, vae, noise_scheduler, 
+                    latents_bn_mean, latents_bn_std):
+        device = self.accelerator.device
+        pixel_values = batch["pixel_values"].to(device=device,dtype=vae.dtype)
+        prompt_embeds = batch["prompt_emb"].to(device=device,dtype=vae.dtype)
+        text_ids = batch["text_ids"].to(device=device)
+
+        # 1. Encode latents
+        model_input = vae.encode(pixel_values).latent_dist.mode()
+
+        # 2. Patchify & Norm (Flux2 Klein 特有逻辑)
+        model_input = Flux2KleinPipeline._patchify_latents(model_input)
+        model_input = (model_input - latents_bn_mean) / latents_bn_std
+        
+        # 3. Prepare IDs
+        model_input_ids = Flux2KleinPipeline._prepare_latent_ids(model_input).to(device=device)
+
+        # 4. Noise & Timesteps
+        noise = torch.randn_like(model_input)
+        bsz = model_input.shape[0]
+        
+        u = compute_density_for_timestep_sampling(
+            weighting_scheme=self.config.training.weighting_scheme,
+            batch_size=bsz,
+            logit_mean=self.config.training.logit_mean,
+            logit_std=self.config.training.logit_std,
+            mode_scale=self.config.training.mode_scale,
+        )
+        indices = (u * noise_scheduler.config.num_train_timesteps).long()
+        timesteps = noise_scheduler.timesteps[indices].to(device=device)
+        
+        # 5. Flow Matching
+        sigmas = self._get_sigmas(timesteps, noise_scheduler, device)
+        noisy_model_input = (1.0 - sigmas) * model_input + sigmas * noise
+        
+        # 6. Pack & Concat
+        packed_noisy_model_input = Flux2KleinPipeline._pack_latents(noisy_model_input)
+        
+        orig_input_shape = packed_noisy_model_input.shape
+        orig_input_ids_shape = model_input_ids.shape
+             
+        # 8. Transformer Forward
+        guidance = torch.full([1], self.config.training.guidance_scale, device=device).expand(bsz) if transformer.config.guidance_embeds else None
+        
+        model_pred = transformer(
+            hidden_states=packed_noisy_model_input,
+            timestep=timesteps / 1000,
+            guidance=guidance,
+            encoder_hidden_states=prompt_embeds,
+            txt_ids=text_ids,
+            img_ids=model_input_ids,
+            return_dict=False,
+        )[0]
+        
+        # 9. Unpack & Loss
+        model_pred = model_pred[:, :orig_input_shape[1], :]
+        model_input_ids = model_input_ids[:, :orig_input_ids_shape[1], :]
+        model_pred = Flux2KleinPipeline._unpack_latents_with_ids(model_pred, model_input_ids)
+        
+        weighting = compute_loss_weighting_for_sd3(weighting_scheme=self.config.training.weighting_scheme, sigmas=sigmas)
+        target = noise - model_input
+        
+        loss = torch.mean(
+            (weighting.float() * (model_pred.float() - target.float()) ** 2).reshape(target.shape[0], -1),
+            1,
+        )
+        return loss.mean()
+
+    def _get_sigmas(self, timesteps, noise_scheduler, device):
+        sigmas = noise_scheduler.sigmas.to(device=device, dtype=torch.float32)
+        schedule_timesteps = noise_scheduler.timesteps.to(device)
+        step_indices = [(schedule_timesteps == t).nonzero().item() for t in timesteps]
+        sigma = sigmas[step_indices].flatten()
+        while len(sigma.shape) < 4:
+            sigma = sigma.unsqueeze(-1)
+        return sigma
+
+    def _get_latent_stats(self, vae):
+        if hasattr(vae, 'bn'):
+            latents_bn_mean = vae.bn.running_mean.view(1, -1, 1, 1).to(self.accelerator.device)
+            latents_bn_std = torch.sqrt(vae.bn.running_var.view(1, -1, 1, 1) + vae.config.batch_norm_eps).to(self.accelerator.device)
+        else:
+            latents_bn_mean = torch.zeros(1, 1, 1, 1).to(self.accelerator.device)
+            latents_bn_std = torch.ones(1, 1, 1, 1).to(self.accelerator.device)
+        return latents_bn_mean, latents_bn_std
+
+    def _save_checkpoint(self, transformer):
+        if self.accelerator.is_main_process:
+            self._save_lora(transformer, f"checkpoint-{self.global_step}")
+
+    def _save_final_checkpoint(self, transformer):
+        if self.accelerator.is_main_process:
+            self._save_lora(transformer, "final")
+    
+    def _save_lora(self, transformer, name):
+        save_path = os.path.join(self.config.training.output_dir, name)
+        os.makedirs(save_path, exist_ok=True)
+        transformer_lora_layers = get_lora_state_dict(transformer)
+        modules_to_save = {"transformer": transformer}
+        Flux2KleinPipeline.save_lora_weights(
+            save_directory=save_path,
+            transformer_lora_layers=transformer_lora_layers,
+            **(_collate_lora_metadata(modules_to_save) if modules_to_save else {})
+        )
+        print(f"Saved checkpoint to {save_path}")
