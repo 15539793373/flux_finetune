@@ -3,7 +3,18 @@ import json
 import argparse
 from glob import glob
 
+VALID_EXT = [".png", ".jpg", ".jpeg", ".webp"]
 
+def is_image(file):
+    return os.path.splitext(file)[-1].lower() in VALID_EXT
+
+
+def load_caption(txt_path):
+    if not os.path.exists(txt_path):
+        return None
+    with open(txt_path, "r", encoding="utf-8") as f:
+        return f.read().strip()
+    
 def load_dataset(jsonl_path):
     data = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
@@ -15,86 +26,81 @@ def load_dataset(jsonl_path):
 def build_dataset(
     target_dir,
     output_file,
-    condition_dir = None,
+    condition_dir=None,
     prompt_single=None,
-
+    use_caption=True,
 ):
-    target_files = sorted(glob(os.path.join(target_dir,'**.*')))
+    # ===== 获取图片 =====
+    target_files = sorted(
+        [f for f in glob(os.path.join(target_dir, "*")) if is_image(f)]
+    )
+
+    print(f"找到 {len(target_files)} 张图片")
+
     if condition_dir:
-        condition_files = sorted(glob(os.path.join(condition_dir,'**.*')))
-        assert len(condition_files) == len(target_files), "数量不一致！"
-        with open(output_file, "w", encoding="utf-8") as f:
-            for cond_file, tgt_file in zip(condition_files, target_files):
-                assert os.path.basename(cond_file) == os.path.basename(tgt_file), f"文件名不匹配: {cond_file} vs {tgt_file}"
-                if prompt_single:
-                    data = {
-                        "target": tgt_file,
-                        "condition": cond_file,
-                        "prompt": prompt_single
-                    }
-                else:
-                    data = {
-                        "target": tgt_file,
-                        "condition": cond_file,
-                        "prompt": os.path.basename(tgt_file).split('.')[0]
-                    }
+        condition_files = sorted(
+            [f for f in glob(os.path.join(condition_dir, "*")) if is_image(f)]
+        )
+        assert len(condition_files) == len(target_files)
 
-                f.write(json.dumps(data, ensure_ascii=False) + "\n")
-    else:
-        with open(output_file, "w", encoding="utf-8") as f:
-            for tgt_file in target_files:
-                if prompt_single:
-                    data = {
-                        "target": tgt_file,
-                        "condition": None,
-                        "prompt": prompt_single
-                    }
-                else:
-                    data = {
-                        "target": tgt_file,
-                        "condition": None,
-                        "prompt": os.path.basename(tgt_file).split('.')[0]
-                    }
-                f.write(json.dumps(data, ensure_ascii=False) + "\n")
+    valid_count = 0
 
-    print(f"✅ 数据集已生成: {output_file}")
+    with open(output_file, "w", encoding="utf-8") as f:
+        for i, tgt_file in enumerate(target_files):
+            # ===== prompt 优先级 =====
+            if prompt_single:
+                prompt = prompt_single
+
+            elif use_caption:
+                txt_file = os.path.splitext(tgt_file)[0] + ".txt"
+                prompt = load_caption(txt_file)
+
+                if prompt is None:
+                    print(f"缺少caption，跳过: {tgt_file}")
+                    continue
+
+            cond_file = None
+            if condition_dir:
+                cond_file = condition_files[i]
+                assert os.path.basename(cond_file) == os.path.basename(tgt_file), \
+                    f"文件名不匹配: {cond_file} vs {tgt_file}"
+            data = {
+                "target": tgt_file,
+                "condition": cond_file,
+                "prompt": prompt,
+            }
+
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+            valid_count += 1
+
+    print(f"有效样本: {valid_count}")
+    print(f"输出文件: {output_file}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="构建 JSONL 数据集")
-
-    parser.add_argument(
-        "--target_dir",
-        type=str,
-        required=True,
-        help="目标图片目录"
-    )
-
-    parser.add_argument(
-        "--condition_dir",
-        type=str,
-        default=None,
-        help="条件图片目录（可选）"
-    )
-
-    parser.add_argument(
-        "--output_file",
-        type=str,
-        required=True,
-        help="输出 jsonl 文件路径"
-    )
-
+    parser.add_argument("--target_dir", type=str, default='/data/clx/tmp/nor/room')
+    parser.add_argument("--condition_dir", type=str, default=None)
+    parser.add_argument("--output_file", type=str, default='/data/clx/tmp/nor/train.jsonl')
     parser.add_argument(
         "--prompt_single",
         type=str,
         default=None,
-        help="统一 prompt（可选）"
+        help="统一 prompt"
+    )
+    parser.add_argument(
+        "--use_caption",
+        type=bool,
+        default=True,
+        help="不使用txt caption"
     )
 
     args = parser.parse_args()
-
     build_dataset(
         target_dir=args.target_dir,
         condition_dir=args.condition_dir,
         output_file=args.output_file,
-        prompt_single=args.prompt_single
+        prompt_single=args.prompt_single,
+        use_caption=args.use_caption,
     )
+
