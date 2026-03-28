@@ -112,8 +112,8 @@ def main():
             optimizer=optimizer,
             num_warmup_steps=config['training']['lr_warmup_steps'],
             num_training_steps=config['training']['max_train_steps'],
-            num_cycles=config['training']['lr_num_cycles'],
-            power=config['training']['lr_power'],
+            num_cycles=1,
+            power=1.0,
         )
 
     # --- 进入训练---
