@@ -28,8 +28,25 @@ pip install -r requirements.txt
 
 ### 2. 数据集准备
 
+现在让我们获取数据集。在这个例子中，我们将使用一些狗的图片: <https://huggingface.co/datasets/diffusers/dog-example>
+
+我们先将其下载到本地：
+
 ```
-python utils/make_datacsv.py \
+from huggingface_hub import snapshot_download
+
+local_dir = "./dog"
+snapshot_download(
+    "diffusers/dog-example",
+    local_dir=dog/target_image, repo_type="dataset",
+    ignore_patterns=".gitattributes",
+)
+```
+
+制作数据集json：
+
+```
+python utils/make_datajson.py \
 -target_dir dog/target_image \
 --output_file dog/train.jsonl \
 --prompt_single "a photo of sks dog"
@@ -57,6 +74,25 @@ data_json: "dog/train.jsonl"
 
 ```
 python train.py --config configs/flux2kleintext2image_lora.yaml
+```
+
+### 5.部署推理demo
+
+```python
+# demo/flux2_klenin.py
+
+def create_pipe():
+    model_dir = ""
+    pipe = Flux2KleinPipeline.from_pretrained(
+        model_dir,
+        torch_dtype=torch.bfloat16
+        )
+    pipe.load_lora_weights('')
+    pipe.set_adapters(["default_0"], adapter_weights=[0.4])
+    print(pipe.get_active_adapters())
+    print("all:", pipe.get_list_adapters())
+    pipe.to('cuda')
+    return pipe
 ```
 
 # 🤝 致谢

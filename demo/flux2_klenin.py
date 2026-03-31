@@ -27,13 +27,7 @@ def create_pipe():
     pipe.to('cuda')
     return pipe
 
-# --- Model Loading ---
-device = "cuda" if torch.cuda.is_available() else "cpu"
-# Load the model pipeline
-pipe = create_pipe()
-# --- UI Constants and Helpers ---
-MAX_SEED = np.iinfo(np.int32).max
-# --- Main Inference Function (with hardcoded negative prompt) ---
+
 @spaces.GPU(duration=300)
 def infer(
     image,
@@ -137,4 +131,11 @@ with gr.Blocks(css=css) as demo:
     )
 
 if __name__ == "__main__":
+    # --- Model Loading ---
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # Load the model pipeline
+    pipe = create_pipe()
+    # --- UI Constants and Helpers ---
+    MAX_SEED = np.iinfo(np.int32).max
+    # --- Main Inference Function (with hardcoded negative prompt) ---
     demo.launch(server_name="0.0.0.0", server_port=6102)

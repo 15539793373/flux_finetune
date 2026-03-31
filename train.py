@@ -66,7 +66,7 @@ def main():
         text_encoder=text_encoder,
         scheduler=None,
         
-    ).pipe
+    ).pipe 
     text_embeding = TextPrecompute(text_encoding_pipeline,config,device=accelerator.device)
     text_embeding.run()
     text_encoding_pipeline = text_encoding_pipeline.to("cpu")
