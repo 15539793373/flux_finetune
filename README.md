@@ -51,23 +51,66 @@ python utils/make_datajson.py \
 --output_file dog/train.jsonl \
 --prompt_single "a photo of sks dog"
 参数说明：
--target_dir: 包含训练图像的文件夹路径
+--target_dir: 包含训练图像的文件夹路径
 --output_file: 输出的训练数据列表文件路径。
-(可选) --prompt\_single: 所有图像共用的提示词。
-(可选) --condition\_dir: imagetoimage包含指导图像文件夹路径。
+(可选) --prompt_single: 所有图像共用的提示词。
+(imagetoimage) --condition_dir: imagetoimage包含指导图像文件夹路径。
 ```
 
 ### 3. 配置训练参数
 
 ```
-# configs/flux2kleintext2image_lora.yaml 示例片段
 model:
-name: "black-forest-labs/FLUX.2-klein-base-4B" # 或您的本地路径
-train:
-output_dir: "./outputs/dog-lora"
-resolution: 1024
+  model_name: "flux2_klein"
+  trainer_name: "flux2kelintext2image_lora"
+  pipeline_name: "flux2kleinpipeline"
+  pretrained_model_name_or_path: "ckpt/FLUX.2-klein-base-4B"
+  revision: null
+  variant: null
+  mixed_precision: "bf16"
+  max_sequence_length: 512
+
 data:
-data_json: "dog/train.jsonl"
+  data_json: "dog/train.jsonl"
+  resolution: 768
+  dataloader_num_workers: 0
+  aspect_ratio_buckets: "768,768"
+
+training:
+  output_dir: "tmp/flux-dog"
+  max_train_steps: 5000
+  checkpointing_steps: 100
+  train_batch_size: 1
+  gradient_accumulation_steps: 2
+  learning_rate: 1.0e-4
+  lr_scheduler: "cosine"
+  lr_warmup_rate: 0.02
+  optimizer: "AdamW"
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_weight_decay: 1.0e-04
+  max_grad_norm: 1.0
+  weighting_scheme: null
+  logit_mean: 0.0
+  logit_std: 1.0
+  mode_scale: 1.29
+
+validation:
+
+  validation_prompt: "A photo of sks dog in a bucket"
+  validation_image: null
+  validation_steps: 100
+  seed: 5534331
+
+lora:
+  rank: 16
+  alpha: 32
+  target_modules:
+    - "to_k"
+    - "to_q"
+    - "to_v"
+    - "to_out.0"
+
 ```
 
 ### 4. 开始训练
@@ -82,12 +125,12 @@ python train.py --config configs/flux2kleintext2image_lora.yaml
 # demo/flux2_klenin.py
 
 def create_pipe():
-    model_dir = ""
+    model_dir = "ckpt/FLUX.2-klein-base-4B"
     pipe = Flux2KleinPipeline.from_pretrained(
         model_dir,
         torch_dtype=torch.bfloat16
         )
-    pipe.load_lora_weights('')
+    pipe.load_lora_weights('tmp/flux-dog/final/pytorch_lora_weights.safetensors')
     pipe.set_adapters(["default_0"], adapter_weights=[0.4])
     print(pipe.get_active_adapters())
     print("all:", pipe.get_list_adapters())

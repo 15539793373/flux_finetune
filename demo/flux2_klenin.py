@@ -15,12 +15,12 @@ AffineQuantizedTensor.__torch_function__ = torch._C._disabled_torch_function_imp
 
 def create_pipe():
 
-    model_dir = "/data/clx/control-lora-v2-master/ckpt/FLUX.2-klein-base-4B"
+    model_dir = "ckpt/FLUX.2-klein-base-4B"
     pipe = Flux2KleinPipeline.from_pretrained(
         model_dir,
         torch_dtype=torch.bfloat16
         )
-    pipe.load_lora_weights('/data/clx/tmp/flux-dreambooth-lora2-nor/checkpoint-24000/pytorch_lora_weights.safetensors')
+    pipe.load_lora_weights('final/pytorch_lora_weights.safetensors')
     pipe.set_adapters(["default_0"], adapter_weights=[0.4])
     print(pipe.get_active_adapters())
     print("all:", pipe.get_list_adapters())
@@ -138,4 +138,4 @@ if __name__ == "__main__":
     # --- UI Constants and Helpers ---
     MAX_SEED = np.iinfo(np.int32).max
     # --- Main Inference Function (with hardcoded negative prompt) ---
-    demo.launch(server_name="0.0.0.0", server_port=6102)
+    demo.launch(server_name="0.0.0.0", server_port=6102,share=True)

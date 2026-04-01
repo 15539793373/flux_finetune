@@ -18,7 +18,7 @@ def load_config(config_path):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="configs/flux2kleintext2image_lora.yaml")
+    parser.add_argument("--config", type=str, default="configs/test.yaml")
     return parser.parse_args()
 
 def main():
@@ -75,12 +75,8 @@ def main():
     model_wrapper.to(accelerator.device)
 
     # --- 数据加载---
-    buckets_str = config['data']['aspect_ratio_buckets']
-    buckets = [tuple(map(int, b.split(','))) for b in buckets_str.split(';')]
-    
     dataset = DreamBoothDataset(
         config=config,
-        buckets=buckets,
         text_emb = text_embeding
     )
 

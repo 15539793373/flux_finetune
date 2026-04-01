@@ -17,28 +17,27 @@ class DreamBoothDataset(Dataset):
     def __init__(
         self,
         config,
-        buckets,
         text_emb = None,
         max_area: int = 1024 * 1024,
         multiple_of: int = 8,
     ):
 
         self.config = config
-        self.buckets = buckets
+        if self.config['data']['resolution']:
+            self.buckets = [(self.config['data']['resolution'], self.config['data']['resolution'])]
+        else:
+            self.buckets = [tuple(map(int, b.split(','))) for b in config['data']['aspect_ratio_buckets'].split(';')]
         self.max_area = max_area
         self.multiple_of = multiple_of
         self.text_emb = text_emb
-
         self.data_list = load_dataset(self.config["data"]["data_json"])
         self.num_images = len(self.data_list)
-        self._length = self.num_images
-
         self.to_tensor = transforms.ToTensor()
         self.normalize = transforms.Normalize([0.5], [0.5])
         self.bucket_ids = None
 
     def __len__(self):
-        return self._length
+        return len(self.data_list)
 
     def __getitem__(self, index):
         real_index = index % self.num_images
@@ -46,10 +45,11 @@ class DreamBoothDataset(Dataset):
         target_path = self.data_list[real_index]['target']
         cond_path = self.data_list[real_index]['condition']
         prompt = self.data_list[real_index]['prompt']
-
-        bucket_idx = self.get_bucket_ids()[index]
+        if len(self.buckets) > 1:
+            bucket_idx = self.get_bucket_ids()[index]
+        else:
+            bucket_idx = 0
         target_h, target_w = self.buckets[bucket_idx]
-
         with Image.open(target_path) as img:
             target_image = exif_transpose(img.convert("RGB"))
         target_image = self.resize_if_needed(target_image)
