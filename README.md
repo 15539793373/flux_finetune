@@ -132,21 +132,8 @@ python train.py --config configs/flux2kleintext2image_lora.yaml
 
 ### 5.部署推理demo
 
-```python
-# demo/flux2_klenin.py
-
-def create_pipe():
-    model_dir = "ckpt/FLUX.2-klein-base-4B"
-    pipe = Flux2KleinPipeline.from_pretrained(
-        model_dir,
-        torch_dtype=torch.bfloat16
-        )
-    pipe.load_lora_weights('tmp/flux-dog/final/pytorch_lora_weights.safetensors')
-    pipe.set_adapters(["default_0"], adapter_weights=[0.4])
-    print(pipe.get_active_adapters())
-    print("all:", pipe.get_list_adapters())
-    pipe.to('cuda')
-    return pipe
+```
+python demo/flux2_klenin.py --base_model ckpt/FLUX.2-klein-base-4B --lora tmp/flux-dog/final/pytorch_lora_weights.safetensors
 ```
 
 # 🤝 致谢
