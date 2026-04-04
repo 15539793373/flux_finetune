@@ -1,1 +1,2 @@
-from .trainer import Flux2KelinText2ImageTrainer,Flux2KelinImage2ImageTrainer
+from .flux2kelini2itrainer import Flux2KelinImage2ImageTrainer
+from .flux2kelint2itrainer import Flux2KelinText2ImageTrainer
