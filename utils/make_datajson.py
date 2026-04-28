@@ -8,7 +8,6 @@ VALID_EXT = [".png", ".jpg", ".jpeg", ".webp"]
 def is_image(file):
     return os.path.splitext(file)[-1].lower() in VALID_EXT
 
-
 def load_caption(txt_path):
     if not os.path.exists(txt_path):
         return None
@@ -28,7 +27,6 @@ def build_dataset(
     output_file,
     condition_dir=None,
     prompt_single=None,
-    use_caption=True,
 ):
     # ===== 获取图片 =====
     target_files = sorted(
@@ -47,11 +45,10 @@ def build_dataset(
 
     with open(output_file, "w", encoding="utf-8") as f:
         for i, tgt_file in enumerate(target_files):
-            # ===== prompt 优先级 =====
             if prompt_single:
                 prompt = prompt_single
 
-            elif use_caption:
+            else:
                 txt_file = os.path.splitext(tgt_file)[0] + ".txt"
                 prompt = load_caption(txt_file)
 
@@ -82,18 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--target_dir", type=str, default='/data/clx/tmp/dog/target_image')
     parser.add_argument("--condition_dir", type=str, default=None)
     parser.add_argument("--output_file", type=str, default='/data/clx/tmp/dog/train.jsonl')
-    parser.add_argument(
-        "--prompt_single",
-        type=str,
-        default=" <sks> a photo of dog",
-        help="统一 prompt"
-    )
-    parser.add_argument(
-        "--use_caption",
-        type=bool,
-        default=True,
-        help="不使用txt caption"
-    )
+    parser.add_argument("--prompt_single",type=str,default= None, help="统一 prompt")
 
     args = parser.parse_args()
     build_dataset(
@@ -101,6 +87,5 @@ if __name__ == "__main__":
         condition_dir=args.condition_dir,
         output_file=args.output_file,
         prompt_single=args.prompt_single,
-        use_caption=args.use_caption,
     )
 
