@@ -28,7 +28,8 @@ def load_config(config_path):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="configs/test.yaml")
+    parser.add_argument("--config", type=str, default="configs/flux1_controlnet.yaml")
+    # parser.add_argument("--config", type=str, default="/code/flux_finetune/configs/test.yaml")
     return parser.parse_args()
 
 def main():

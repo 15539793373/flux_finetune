@@ -33,11 +33,11 @@ class TextPrecompute:
             path = self._get_path(prompt)
             if os.path.exists(path):
                 continue
-            prompt_embeds, text_ids = self.model_wrapper._encode(prompt)
+            outputs = self.model_wrapper._encode(prompt)
             torch.save(
                 {
-                    "prompt_embeds": prompt_embeds.cpu(),
-                    "text_ids": text_ids.cpu(),
+                    k: (v.detach().cpu() if torch.is_tensor(v) else v)
+                    for k, v in outputs.items()
                 },
                 path,
             )

@@ -1,1 +1,2 @@
 from .dreamboothdataset import DreamBoothDataset
+from .controlnetdataset import ControlNetDataset

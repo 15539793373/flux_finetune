@@ -46,12 +46,17 @@ class Flux2KleinModel:
     def _encode(self, prompt):
         if next(self.text_encoder.parameters()).device.type != self.device:
             self.text_encoder = self.text_encoder.to(self.device).eval()
+            
         prompt_embeds, text_ids = self.pipe.encode_prompt(
             prompt=prompt,
             device=self.device,
             max_sequence_length=self.config.model.max_sequence_length,
         )
-        return prompt_embeds, text_ids
+
+        return {
+            "prompt_embeds": prompt_embeds,
+            "text_ids": text_ids
+            }
 
     def unload_text_encoder(self):
         if self.text_encoder is not None:

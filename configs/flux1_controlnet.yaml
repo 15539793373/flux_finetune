@@ -1,0 +1,49 @@
+model:
+  model_name: "flux1"
+  pretrained_model_name_or_path: "/data/clx/control-lora-v2-master/ckpt/FLUX.1-dev"
+  revision: null
+  variant: null
+  mixed_precision: "bf16"
+  max_sequence_length: 512
+  model_adapter: "controlnet"
+
+data:
+  data_type: "controlnetdataset"
+  data_json: "/data/clx/data/wenli_data/tile_flux2_klein/resolution512/train.jsonl"
+  resolution: [768, 768]
+  dataloader_num_workers: 0
+  repeats: 20
+
+training:
+  trainer_name: "flux1_controlnet"
+  output_dir: "./flux-dreambooth-lora2"
+  max_train_steps: 5000
+  checkpointing_steps: 200
+  train_batch_size: 2
+  gradient_accumulation_steps: 2
+  learning_rate: 5.0e-5
+  lr_scheduler: "cosine"
+  lr_warmup_rate: 0.02
+  optimizer: "AdamW"
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_weight_decay: 1.0e-04
+  max_grad_norm: 1.0
+  weighting_scheme: null
+  logit_mean: 0.0
+  logit_std: 1.0
+  mode_scale: 1.29
+  guidance_scale: 3.5
+
+
+validation:
+  validation_prompt: " "
+  validation_image: "image/Image.png"
+  validation_steps: 200
+  seed: 5534331
+
+controlnet:
+  pretrained_controlnet_path: null
+  num_double_layers: 4
+  num_single_layers: 4
+

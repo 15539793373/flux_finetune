@@ -1,6 +1,7 @@
 import torch
 from diffusers.optimization import get_scheduler
 from core.adapters.lora import setup_lora
+from core.adapters.controlnet import setup_controlnet
 from core.cache.textprecompute import TextPrecompute
 
 def prepare_text_embeddings(config, model_wrapper):
@@ -45,7 +46,7 @@ def prepare_training_components(config, accelerator, model_wrapper, train_datalo
 
 def setup_model_adapter(config, model_wrapper,logger=None):
     if config.model.model_adapter == 'lora':
-        setup_lora(model_wrapper, config.lora.rank, config.lora.alpha, config.lora.target_modules, config.lora.dropout,logger)
-    # if 'controlnet' in config:
-    #     setup_controlnet(model, **config.controlnet)
+        setup_lora(model_wrapper,config,logger)
+    if config.model.model_adapter == 'controlnet':
+        setup_controlnet(model_wrapper,config,logger)
     
