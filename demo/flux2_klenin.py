@@ -8,6 +8,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from diffusers import Flux2KleinPipeline
 from torchao.dtypes.affine_quantized_tensor import AffineQuantizedTensor
 import argparse
+from diffusers import BitsAndBytesConfig,Flux2Transformer2DModel # type: ignore
 
 def _safe_has_compatible_shallow_copy_type(t1, t2):
     return True
@@ -18,9 +19,21 @@ AffineQuantizedTensor.__torch_function__ = torch._C._disabled_torch_function_imp
 def create_pipe(base_weight: str, lora_weight: str, adapter_weights: float):
 
     model_dir = base_weight
+    nf4_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+        )
+    transformer_nf4 = Flux2Transformer2DModel.from_pretrained(
+        model_dir,
+        subfolder="transformer",
+        quantization_config=nf4_config,
+        torch_dtype=torch.bfloat16
+        )
     pipe = Flux2KleinPipeline.from_pretrained(
         model_dir,
-        torch_dtype=torch.bfloat16
+        transformer=transformer_nf4,
+        torch_dtype=torch.bfloat16,
         )
     if lora_weight:
         pipe.load_lora_weights(lora_weight)
@@ -32,8 +45,8 @@ def create_pipe(base_weight: str, lora_weight: str, adapter_weights: float):
 
 @spaces.GPU(duration=300)
 def infer(
-    image,
     prompt,
+    image=None,
     seed=42,
     randomize_seed=False,
     guidance_scale=1.0,
@@ -52,14 +65,21 @@ def infer(
             image = [i[0].convert("RGB") for i in image]
         else:
             image = image.convert("RGB")
-    image = [image]
-    image = pipe(
-        image=image if len(image) > 1 else image[0],
-        prompt=prompt,
-        num_inference_steps=num_inference_steps,
-        generator=generator,
-        guidance_scale=guidance_scale,
-    ).images[0]
+        image = [image]
+        image = pipe(
+            image=image if len(image) > 1 else image[0],
+            prompt=prompt,
+            num_inference_steps=num_inference_steps,
+            generator=generator,
+            guidance_scale=guidance_scale,
+        ).images[0]
+    else:
+        image = pipe(
+            prompt=prompt,
+            num_inference_steps=num_inference_steps,
+            generator=generator,
+            guidance_scale=guidance_scale,
+        ).images[0]
     return image, seed
 
 
@@ -122,8 +142,8 @@ def create_ui():
             triggers=[run_button.click, prompt.submit],
             fn=infer,
             inputs=[
-                input_image,
                 prompt,
+                input_image,
                 seed,
                 randomize_seed,
                 guidance_scale,
@@ -135,8 +155,8 @@ def create_ui():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base_model", type=str, default="/data/clx/control-lora-v2-master/ckpt/FLUX.2-klein-9B", help="base model path")
-    parser.add_argument("--lora", type=str, default=None,  help="lora weight path")
+    parser.add_argument("--base_model", type=str, default="/data/clx/control-lora-v2-master/ckpt/FLUX.2-klein-base-9B", help="base model path")
+    parser.add_argument("--lora", type=str, default='/code/flux_finetune/log/lvbag01/checkpoint-3600/pytorch_lora_weights.safetensors',  help="lora weight path")
     parser.add_argument("--port", type=int, default=6102, help="server port")
     parser.add_argument("--adapter_weights", type=float, default=1.0, help="adapter weights")
     args = parser.parse_args()
@@ -150,6 +170,5 @@ if __name__ == "__main__":
     demo = create_ui()
     demo.launch(
         server_name="0.0.0.0",
-        server_port=args.port,
-        share=True
+        server_port=args.port
     )

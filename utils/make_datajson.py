@@ -24,7 +24,7 @@ def load_dataset(jsonl_path):
 
 def build_dataset(
     target_dir,
-    output_file,
+    output_file=None,
     condition_dir=None,
     prompt_single=None,
 ):
@@ -42,6 +42,9 @@ def build_dataset(
         assert len(condition_files) == len(target_files)
 
     valid_count = 0
+
+    if not output_file:
+        output_file = os.path.join(os.path.dirname(target_dir),'train.jsonl')
 
     with open(output_file, "w", encoding="utf-8") as f:
         for i, tgt_file in enumerate(target_files):
@@ -76,9 +79,9 @@ def build_dataset(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="构建 JSONL 数据集")
-    parser.add_argument("--target_dir", type=str, default='/data/clx/tmp/dog/target_image')
-    parser.add_argument("--condition_dir", type=str, default=None)
-    parser.add_argument("--output_file", type=str, default='/data/clx/tmp/dog/train.jsonl')
+    parser.add_argument("--target_dir", type=str, default='/data/clx/data/lora_data/lvbag_data/lv_bag')
+    parser.add_argument("--condition_dir", type=str, default= None, help="Image to Image")
+    parser.add_argument("--output_file", type=str, default= None, help="输出路径")
     parser.add_argument("--prompt_single",type=str,default= None, help="统一 prompt")
 
     args = parser.parse_args()
