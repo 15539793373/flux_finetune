@@ -23,7 +23,7 @@
 ### 1. 环境准备
 
 ```
-git clone https://github.com/yourusername/flux-finetune.git
+git clone https://github.com/chenlx97/flux_finetune.git
 cd flux-finetune
 pip install -r requirements.txt
 ```
@@ -62,11 +62,6 @@ python utils/make_datajson.py \
 -target_dir dog/target_image \
 --output_file dog/train.jsonl \
 --prompt_single "a photo of sks dog"
-参数说明：
---target_dir: 包含训练图像的文件夹路径
---output_file: 输出的训练数据列表文件路径。
-(可选) --prompt_single: 所有图像共用提示词。
-(imagetoimage) --condition_dir: imagetoimage包含指导图像文件夹路径。
 ```
 
 ### 3. 配置训练参数
@@ -74,21 +69,22 @@ python utils/make_datajson.py \
 ```
 model:
   model_name: "flux2_klein"
-  trainer_name: "flux2kelintext2image_lora"
-  pipeline_name: "flux2kleinpipeline"
   pretrained_model_name_or_path: "ckpt/FLUX.2-klein-base-4B"
   revision: null
   variant: null
   mixed_precision: "bf16"
   max_sequence_length: 512
+  model_adapter: "lora"
 
 data:
+  data_type: "dreamboothdataset"
   data_json: "dog/train.jsonl"
-  resolution: 768
+  resolution: [768, 768]
   dataloader_num_workers: 0
-  aspect_ratio_buckets: "768,768"
+  repeats: 20
 
 training:
+  trainer_name: "flux2kelintext2image_lora"
   output_dir: "tmp/flux-dog"
   max_train_steps: 5000
   checkpointing_steps: 100
@@ -109,7 +105,7 @@ training:
 
 validation:
 
-  validation_prompt: "A photo of sks dog in a bucket"
+  validation_prompt: "a photo of sks dog"
   validation_image: null
   validation_steps: 100
   seed: 5534331
@@ -117,11 +113,13 @@ validation:
 lora:
   rank: 16
   alpha: 32
+  dropout: 0.1
   target_modules:
     - "to_k"
     - "to_q"
     - "to_v"
     - "to_out.0"
+
 
 ```
 

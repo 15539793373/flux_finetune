@@ -157,7 +157,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_model", type=str, default="/data/clx/control-lora-v2-master/ckpt/FLUX.2-klein-base-9B", help="base model path")
     parser.add_argument("--lora", type=str, default='/code/flux_finetune/log/lvbag01/checkpoint-3600/pytorch_lora_weights.safetensors',  help="lora weight path")
-    parser.add_argument("--port", type=int, default=6102, help="server port")
+    parser.add_argument("--port", type=int, default=None, help="server port")
     parser.add_argument("--adapter_weights", type=float, default=1.0, help="adapter weights")
     args = parser.parse_args()
     # --- device ---
