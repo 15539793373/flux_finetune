@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 ### 2. 权重和数据集准备
 
-现在让我们获取weight file。在这个例子中，我们将使用FLUX.2-klein-base-4B作为base权重: <https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B>
+获取weight file。在这个例子中，将使用FLUX.2-klein-base-4B作为base权重: <https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B>
 
 ```
 pip install "huggingface_hub[cli]"
@@ -40,9 +40,9 @@ hf download black-forest-labs/FLUX.2-klein-base-4B --local-dir ckpt/FLUX.2-klein
 
 <br />
 
-现在让我们获取数据集。在这个例子中，我们将使用一些狗的图片: <https://huggingface.co/datasets/diffusers/dog-example>
+获取数据集。在这个例子中，将使用一些狗的图片: <https://huggingface.co/datasets/diffusers/dog-example>
 
-我们先将其下载到本地：
+将其下载到本地：
 
 ```
 from huggingface_hub import snapshot_download
