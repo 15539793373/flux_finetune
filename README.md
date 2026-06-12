@@ -23,7 +23,7 @@
 ### 1. 环境准备
 
 ```
-git clone https://github.com/chenlx97/flux_finetune.git
+git clone http://172.20.20.189/smart/flux_finetune.git
 cd flux-finetune
 pip install -r requirements.txt
 ```
