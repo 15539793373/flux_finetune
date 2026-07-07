@@ -3,7 +3,7 @@ import torch
 from diffusers import Flux2KleinPipeline,FluxControlNetPipeline
 from diffusers.training_utils import free_memory
 from PIL import Image
-def flux2kelin_validation(config, transformer, accelerator,global_step):
+def flux2klein_validation(config, transformer, accelerator,global_step):
 
     transformer = accelerator.unwrap_model(transformer)
     transformer.eval()
@@ -38,14 +38,14 @@ def flux2kelin_validation(config, transformer, accelerator,global_step):
     free_memory()
     transformer.train()
 
-def flux1control_validation(config, transformer, accelerator,global_step):
+def flux1control_validation(config, controlnet, accelerator,global_step):
 
-    transformer = accelerator.unwrap_model(transformer)
-    transformer.eval()
+    controlnet = accelerator.unwrap_model(controlnet)
+    controlnet.eval()
     # 创建 pipeline
     pipeline = FluxControlNetPipeline.from_pretrained(
         config.model.pretrained_model_name_or_path,
-        transformer=transformer,
+        controlnet=controlnet,
         torch_dtype=torch.bfloat16,
     )
 
@@ -59,7 +59,7 @@ def flux1control_validation(config, transformer, accelerator,global_step):
     validation_image = Image.open(config.validation.validation_image).convert("RGB") if config.validation.validation_image else None
     with torch.autocast(accelerator.device.type):
         image = pipeline(
-            image=validation_image,
+            control_image=validation_image,
             prompt=config.validation.validation_prompt,
             generator=generator,
         ).images[0]
@@ -71,4 +71,4 @@ def flux1control_validation(config, transformer, accelerator,global_step):
     
     del pipeline
     free_memory()
-    transformer.train()
+    controlnet.train()

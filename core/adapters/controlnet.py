@@ -18,7 +18,7 @@ def setup_controlnet(model_wrapper, config,logger=None):
                 num_single_layers=config.controlnet.num_single_layers,
             )
     else:
-        pass
+        raise NotImplementedError(f"controlnet adapter not supported for {config.model.model_name}")
 
     model_wrapper.controlnet = controlnet
 

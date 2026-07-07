@@ -15,7 +15,7 @@ data:
   repeats: 20
 
 training:
-  trainer_name: "flux2kelinimage2image_lora"
+  trainer_name: "flux2kleinimage2image_lora"
   output_dir: "./flux-dreambooth-lora2"
   max_train_steps: 5000
   checkpointing_steps: 200

@@ -1,3 +1,3 @@
-from .flux2kelini2itrainer import Flux2KelinImage2ImageTrainer
-from .flux2kelint2itrainer import Flux2KelinText2ImageTrainer
+from .flux2kleini2itrainer import Flux2KleinImage2ImageTrainer
+from .flux2kleint2itrainer import Flux2KleinText2ImageTrainer
 from .flux1controlnettrainer import Flux1ControlNetTrainer

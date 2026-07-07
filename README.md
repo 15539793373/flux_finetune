@@ -84,7 +84,7 @@ data:
   repeats: 20
 
 training:
-  trainer_name: "flux2kelintext2image_lora"
+  trainer_name: "flux2kleintext2image_lora"
   output_dir: "tmp/flux-dog"
   max_train_steps: 5000
   checkpointing_steps: 100

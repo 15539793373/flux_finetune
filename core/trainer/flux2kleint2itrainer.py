@@ -7,10 +7,10 @@ from diffusers import Flux2KleinPipeline
 from registry.trainer_registry import TrainerRegistry
 from core.adapters.lora import get_lora_state_dict
 from diffusers.training_utils import _collate_lora_metadata
-from utils.validation import flux2kelin_validation
+from utils.validation import flux2klein_validation
 
-@TrainerRegistry.register('flux2kelintext2image_lora')
-class Flux2KelinText2ImageTrainer:
+@TrainerRegistry.register('flux2kleintext2image_lora')
+class Flux2KleinText2ImageTrainer:
     def __init__(self, accelerator: Accelerator, config, logger=None):
         self.accelerator = accelerator
         self.config = config
@@ -77,7 +77,7 @@ class Flux2KelinText2ImageTrainer:
         if self.global_step % self.config.training.checkpointing_steps == 0:
             self._save_checkpoint(transformer)
         if self.global_step % self.config.validation.validation_steps == 0:
-            flux2kelin_validation(
+            flux2klein_validation(
                 self.config,
                 transformer,
                 self.accelerator,
