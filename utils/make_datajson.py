@@ -35,12 +35,6 @@ def build_dataset(
 
     print(f"找到 {len(target_files)} 张图片")
 
-    if condition_dir:
-        condition_files = sorted(
-            [f for f in glob(os.path.join(condition_dir, "*")) if is_image(f)]
-        )
-        assert len(condition_files) == len(target_files)
-
     valid_count = 0
 
     if not output_file:
@@ -61,9 +55,8 @@ def build_dataset(
 
             cond_file = None
             if condition_dir:
-                cond_file = condition_files[i]
-                assert os.path.basename(cond_file) == os.path.basename(tgt_file), \
-                    f"文件名不匹配: {cond_file} vs {tgt_file}"
+                cond_file = os.path.join(condition_dir,os.path.basename(tgt_file))
+                assert os.path.exists(cond_file)
             data = {
                 "target": tgt_file,
                 "condition": cond_file,
@@ -79,10 +72,10 @@ def build_dataset(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="构建 JSONL 数据集")
-    parser.add_argument("--target_dir", type=str, default='/data/clx/data/lora_data/lvbag_data/lv_bag')
-    parser.add_argument("--condition_dir", type=str, default= None, help="Image to Image")
+    parser.add_argument("--target_dir", type=str, default='/data/clx/data/道路后处理/road_pro')
+    parser.add_argument("--condition_dir", type=str, default= '/data/clx/data/道路后处理/road_png', help="Image to Image")
     parser.add_argument("--output_file", type=str, default= None, help="输出路径")
-    parser.add_argument("--prompt_single",type=str,default= None, help="统一 prompt")
+    parser.add_argument("--prompt_single",type=str,default= '道路二值分割掩膜，平滑连续的边界，没有锯齿状边缘，没有孔洞。', help="统一 prompt")
 
     args = parser.parse_args()
     build_dataset(
